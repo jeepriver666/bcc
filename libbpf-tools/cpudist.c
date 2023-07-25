@@ -65,18 +65,26 @@ static const struct argp_option opts[] = {
 	{},
 };
 
+// 函数作用： 解析命令行参数
+// 参数1：key，参数选项
+// 参数2：arg，参数值
+// 参数3：state，结构体指针，包含关于参数解析器内部状态的信息
 static error_t parse_arg(int key, char *arg, struct argp_state *state)
 {
+	// 用于跟踪在解析过程中遇到的位置参数数量
 	static int pos_args;
 
 	switch (key) {
 	case 'h':
+		// 显示帮助信息
 		argp_state_help(state, stderr, ARGP_HELP_STD_HELP);
 		break;
 	case 'v':
+		// env结构中的调试输出标志，设置为true
 		env.verbose = true;
 		break;
 	case 'm':
+		// 毫秒直方图标志，设置为true
 		env.milliseconds = true;
 		break;
 	case 'c':
