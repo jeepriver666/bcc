@@ -194,11 +194,14 @@ static int print_log2_hists(int fd)
 			printf("\npid = %d %s\n", next_key, hist.comm);
 		if (env.per_thread)
 			printf("\ntid = %d %s\n", next_key, hist.comm);
+		// 调用 print_log2_hist 函数打印日志直方图的槽位数据
 		print_log2_hist(hist.slots, MAX_SLOTS, units);
+		// 将 lookup_key 更新为 next_key，以便在下一次循环中继续从下一个键开始查找
 		lookup_key = next_key;
 	}
 
 	lookup_key = -2;
+	// 再次遍历BPF Map并删除已打印的键值对，以清理数据
 	while (!bpf_map_get_next_key(fd, &lookup_key, &next_key)) {
 		err = bpf_map_delete_elem(fd, &next_key);
 		if (err < 0) {
