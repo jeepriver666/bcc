@@ -15,6 +15,7 @@
 #include "cpudist.skel.h"
 #include "trace_helpers.h"
 
+// 参数配置结构体，具体含义如 opts 结构体数组里的解释
 static struct env {
 	time_t interval;
 	pid_t pid;
@@ -88,11 +89,13 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
 		env.milliseconds = true;
 		break;
 	case 'c':
+		// cgroupspath 不懂作用是啥
 		env.cgroupspath = arg;
 		env.cg = true;
 		break;
 	case 'p':
 		errno = 0;
+		// strtol函数把参数 arg 字符串转换为 10 的整型
 		env.pid = strtol(arg, NULL, 10);
 		if (errno) {
 			fprintf(stderr, "invalid PID: %s\n", arg);
@@ -138,6 +141,7 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
+// 打印等级函数，输出调试信息
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
 	if (level == LIBBPF_DEBUG && !env.verbose)
@@ -145,6 +149,7 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 	return vfprintf(stderr, format, args);
 }
 
+// 获取最大 pid 值
 static int get_pid_max(void)
 {
 	int pid_max;
@@ -159,19 +164,27 @@ static int get_pid_max(void)
 	return pid_max;
 }
 
+// 信号处理回调函数，控制全局变量 exiting ，用于退出 main 函数
 static void sig_handler(int sig)
 {
 	exiting = true;
 }
 
+// 打印日志直方图，参数 fd 表示BPF Map的文件描述符
 static int print_log2_hists(int fd)
 {
+	// 根据全局变量值选择 直方图的输出时间单位，毫秒还是微妙
 	char *units = env.milliseconds ? "msecs" : "usecs";
 	__u32 lookup_key = -2, next_key;
+
+	// 自定义结构体 hist，用于存储日志直方图的数据
 	struct hist hist;
 	int err;
 
+	// bpf_map_get_next_key 函数用于获取下一个键值对的键，并将其保存在 next_key 中。
+	// 它返回true表示成功获取下一个键值对的键，false表示已经到达BPF Map的末尾。
 	while (!bpf_map_get_next_key(fd, &lookup_key, &next_key)) {
+		// 使用 bpf_map_lookup_elem 函数查找BPF Map中与键 next_key 相关联的值，并将其保存在 hist 变量中
 		err = bpf_map_lookup_elem(fd, &next_key, &hist);
 		if (err < 0) {
 			fprintf(stderr, "failed to lookup hist: %d\n", err);
