@@ -80,6 +80,12 @@ static __always_inline void update_hist(struct task_struct *task,
 		 * additionally emitting BPF CO-RE field relocation for specified source
 		 * argument.
 		 */
+		/* task->comm
+                 * executable name excluding path
+                 *     - access with [gs]et_task_comm (which lock
+                 *       it with task_lock())
+                 *     - initialized normally by setup_new_exec
+		 */
 		BPF_CORE_READ_STR_INTO(&histp->comm, task, comm);
 	}
 	delta = ts - *tsp;
