@@ -71,6 +71,15 @@ static __always_inline void update_hist(struct task_struct *task,
 		histp = bpf_map_lookup_elem(&hists, &id);
 		if (!histp)
 			return;
+		/*
+		 * BPF_CORE_READ_STR_INTO() does same "pointer chasing" as
+		 * BPF_CORE_READ() for intermediate pointers, but then executes (and returns
+		 * corresponding error code) bpf_core_read_str() for final string read.
+		 *
+		 * bpf_core_read_str() is a thin wrapper around bpf_probe_read_str()
+		 * additionally emitting BPF CO-RE field relocation for specified source
+		 * argument.
+		 */
 		BPF_CORE_READ_STR_INTO(&histp->comm, task, comm);
 	}
 	delta = ts - *tsp;
@@ -81,6 +90,8 @@ static __always_inline void update_hist(struct task_struct *task,
 	slot = log2l(delta);
 	if (slot >= MAX_SLOTS)
 		slot = MAX_SLOTS - 1;
+	
+	//histp->slots[slot]值加1
 	__sync_fetch_and_add(&histp->slots[slot], 1);
 }
 
@@ -90,6 +101,13 @@ static int handle_switch(struct task_struct *prev, struct task_struct *next)
 	u32 tgid = BPF_CORE_READ(next, tgid), pid = BPF_CORE_READ(next, pid);
 	u64 ts = bpf_ktime_get_ns();
 
+	/* bpf_current_task_under_cgroup(struct bpf_map *map, u32 index)
+         *  
+         * Check whether the probe is being run is the context
+         * of a given subset of the cgroup2 hierarchy. The
+         * cgroup2 to test is held by map of type
+         * BPF_MAP_TYPE_CGROUP_ARRAY, at index.
+         */
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
